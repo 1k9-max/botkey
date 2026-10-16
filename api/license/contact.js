@@ -10,7 +10,8 @@ module.exports = function handler(req, res) {
   if (!configured) return sendJson(res, 200, { url: '' });
   try {
     const url = new URL(configured);
-    if (url.protocol !== 'https:' || !['discord.gg', 'discord.com', 'www.discord.com'].includes(url.hostname)) {
+    const allowedHosts = new Set(['discord.gg', 'discord.com', 'www.discord.com', 'discordapp.com', 'www.discordapp.com']);
+    if (url.protocol !== 'https:' || !allowedHosts.has(url.hostname)) {
       return sendJson(res, 500, { error: 'VIP_CONTACT_URL phải là link HTTPS của Discord.' });
     }
     return sendJson(res, 200, { url: url.toString() });

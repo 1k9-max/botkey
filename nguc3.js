@@ -1153,7 +1153,9 @@ function startWebServer() {
         const upstream = new URL(`${LICENSE_API_URL}/api/license/contact`);
         if (upstream.protocol !== 'https:') return sendJson(res, 503, { error: 'LICENSE_API_URL phải dùng HTTPS.' });
         const response = await fetch(upstream, { signal: AbortSignal.timeout(8000) });
-        const result = await response.json();
+        const text = await response.text();
+        let result = {};
+        try { result = text ? JSON.parse(text) : {}; } catch (_) { result = { error: 'Không đọc được dữ liệu từ API liên hệ VIP.' }; }
         return sendJson(res, response.status, result);
       }
       if (req.method === 'POST' && url === '/api/debug') {

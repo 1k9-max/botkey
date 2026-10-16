@@ -61,10 +61,19 @@ $('getKey').addEventListener('click', function () {
 		return response.json().then(function (data) { if (!response.ok) throw new Error(data.error || 'Không tạo được key.'); return data; });
 	}).then(function (data) { showKey(data); showMessage('Key đã được tạo.'); }).catch(function (error) { showMessage(error.message, true); }).finally(function () { button.disabled = false; });
 });
-fetch('/api/license/contact').then(function (response) { return response.json(); }).then(function (data) {
-	if (!data.url) return;
-	$('buyVip').href = data.url; $('buyVip').hidden = false; $('contactUnavailable').hidden = true;
-}).catch(function () {});
+fetch('/api/license/contact').then(async function (response) {
+	var text = await response.text();
+	try {
+		var data = text ? JSON.parse(text) : {};
+		if (!data.url) return;
+		$('buyVip').href = data.url; $('buyVip').hidden = false; $('contactUnavailable').hidden = true;
+	} catch (error) {
+		$('contactUnavailable').hidden = false;
+		showMessage('Liên hệ VIP chưa được cấu hình hoặc server trả về lỗi.', true);
+	}
+}).catch(function () {
+	$('contactUnavailable').hidden = false;
+});
 if (sharedKey) { showKey({ key: sharedKey }); history.replaceState(null, '', location.pathname); }
 </script>
 </body>
