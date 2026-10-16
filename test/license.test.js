@@ -37,6 +37,37 @@ function setEnv(values) {
   };
 }
 
+test('local config.json is optional for serverless deploys', () => {
+  const configPath = path.join(__dirname, '..', 'config.json');
+  const backupPath = configPath + '.bak-test';
+  const previousConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : null;
+  const previousEnv = { ADMIN_TOKEN: process.env.ADMIN_TOKEN, PUBLIC_APP_URL: process.env.PUBLIC_APP_URL };
+  const resolvedConfigModule = (() => {
+    try { return require.resolve('../config.json'); } catch (_) { return null; }
+  })();
+
+  try {
+    if (resolvedConfigModule) delete require.cache[resolvedConfigModule];
+    if (fs.existsSync(configPath)) fs.renameSync(configPath, backupPath);
+    delete require.cache[require.resolve('../lib/app-config')];
+    const { getConfigValue } = require('../lib/app-config');
+    assert.equal(getConfigValue('ADMIN_TOKEN'), undefined);
+    process.env.PUBLIC_APP_URL = 'https://env.example';
+    assert.equal(getConfigValue('PUBLIC_APP_URL'), 'https://env.example');
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    delete require.cache[require.resolve('../lib/app-config')];
+    if (fs.existsSync(backupPath)) {
+      fs.renameSync(backupPath, configPath);
+    } else if (previousConfig !== null) {
+      fs.writeFileSync(configPath, previousConfig);
+    }
+  }
+});
+
 test('server-side srv.json values are used for deployment secrets and env wins over file', () => {
   const srvPath = path.join(__dirname, '..', 'srv.json');
   const previousContent = fs.existsSync(srvPath) ? fs.readFileSync(srvPath, 'utf8') : null;
