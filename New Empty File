@@ -1,0 +1,153 @@
+
+
+# 📜 SYSTEM PROMPT & SPECIFICATION: HỆ THỐNG XÁC MINH KEY & BẢO MẬT TOOL
+
+### **1. TỔNG QUAN HỆ THỐNG**
+
+Thiết kế và triển khai cơ chế xác minh Key cho ứng dụng Node.js (Web Panel + Mineflayer Bot). Hệ thống bao gồm 2 phần chính:
+
+1. **Server Quản Lý Key & Link Rút Gọn (Key Server)**
+2. **Client Tool & Web Interface (Tích hợp trên `nguc3.js`)**
+
+---
+
+### **2. QUY ĐỊNH CƠ CHẾ KEY & CƠ SỞ DỮ LIỆU (DATABASE)**
+
+#### **Cấu trúc Cơ sở dữ liệu (Database Schema)**
+
+Mỗi bản ghi Key bao gồm các trường dữ liệu sau:
+
+* `key`: Chuỗi ngẫu nhiên 30 ký tự (ví dụ: `A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5`).
+* `type`: Loại Key (`"FREE"` hoặc `"VIP"`).
+* `ip`: IP của người dùng đăng ký/kích hoạt (1 Key chỉ dùng cho 1 IP).
+* `created_at`: Thời gian tạo Key.
+* `expires_at`: Thời gian hết hạn Key (Timestamp/ISO Date).
+* `is_active`: Trạng thái Key (`true` / `false`).
+
+#### **Quy tắc xử lý Key**:
+
+* **Key Free**:
+* Tự động tạo ngẫu nhiên chuỗi **30 ký tự**.
+* Hạn sử dụng: **12 tiếng** tính từ thời điểm tạo/kích hoạt.
+* Tự động hết hạn và xóa/vô hiệu hóa trong Database sau 12 tiếng.
+* Ràng buộc **1 Key - 1 IP**.
+
+
+* **Key VIP (Premium)**:
+* Được Admin thêm thủ công trực tiếp vào Database.
+* Cài đặt thời hạn tùy chỉnh (ví dụ: 30 ngày, 1 năm, v.v.).
+* Ràng buộc **1 Key - 1 IP** (Gắn IP ở lần xác thực đầu tiên).
+
+
+
+---
+
+### **3. SERVER QUẢN LÝ KEY (BACKEND SERVER)**
+
+#### **A. API Tạo Key Free & Rút Gọn Link**
+
+* **Luồng xử lý**:
+1. Người dùng truy cập trang Web Client bấm nút **"Lấy Link Key Free"**.
+2. Server sinh Key ngẫu nhiên 30 ký tự: `KEY_RANDOM_30_CHAR`.
+3. Tạo URL xác thực đích: `[https://your-keyserver.com/verify?key=KEY_RANDOM_30_CHAR](https://your-keyserver.com/verify?key=KEY_RANDOM_30_CHAR)`.
+4. Server gọi API link4m để rút gọn URL:
+* **Endpoint**: `[https://link4m.co/api-shorten/v2?api=6905ed8a08f256195c28d93a&url=https://your-keyserver.com/verify?key=KEY_RANDOM_30_CHAR](https://link4m.co/api-shorten/v2?api=6905ed8a08f256195c28d93a&url=https://your-keyserver.com/verify?key=KEY_RANDOM_30_CHAR)`
+* **Response nhận về**: `{"status":"success","shortenedUrl":"https:\/\/link4m.com\/xxxxxx"}`
+
+
+5. Trả URL rút gọn về Web Client cho người dùng copy/vượt link.
+6. Sau khi người dùng vượt link4m thành công và hoàn tất verify trên Web Server, Web Server trả về chuỗi Key 30 ký tự đó và lưu vào Database (gắn kèm IP người dùng + hết hạn sau 12 tiếng).
+
+
+
+#### **B. API Kiểm Tra Key (`/api/check-key`)**
+
+* **Input**: `{ "key": "STRING", "ip": "CLIENT_IP" }`
+* **Logic Kiểm tra**:
+1. Nếu Key không tồn tại -> Trả về lỗi `Key không hợp lệ`.
+2. Nếu Key đã có IP khác gắn vào -> Trả về lỗi `Key đã được sử dụng ở IP khác`.
+3. Nếu Key chưa có IP -> Tiến hành gắn IP của người gửi request vào Key.
+4. Nếu `Date.now() > expires_at` -> Trả về lỗi `Key đã hết hạn`.
+5. Nếu hợp lệ -> Trả về `{"status": "success", "expires_at": timestamp, "type": "VIP"|"FREE"}`.
+
+
+
+#### **C. API Vô Hiệu Hóa Key (`/api/revoke-key`)**
+
+* Khi nhận được cảnh báo Anti-Debug từ Client, Server đánh dấu `is_active = false` hoặc xóa Key đó khỏi Database ngay lập tức.
+
+---
+
+### **4. tích hợp client (WEB PANEL & TOOL NODE.JS)**
+
+#### **A. Giao diện Web Panel (`PANEL_HTML`)**
+
+* **Trạng thái Chưa có Key / Key Lỗi**:
+* Khi mở Web hoặc chạy Tool mà Key chưa nhập/không hợp lệ/hết hạn, xuất hiện **Cửa số / Modal Cảnh báo** khóa toàn bộ tính năng với 2 lựa chọn:
+1. **Nút "Lấy Key Free (12h)"**: Gọi về Server để lấy Link rút gọn link4m chứa Key -> Hiển thị link + nút Copy nhanh cho người chơi.
+2. **Nút "Mua Key VIP"**: Chuyển hướng (mở tab mới) tới link Discord của Admin.
+
+
+* **Ô nhập Key**: Cho phép người dùng dán Key đã lấy vào -> Bấm "Xác thực".
+
+
+* **Lưu và Sử dụng Config**:
+* Khi nhập Key hợp lệ, lưu Key vào `config.json` dạng `"key": "A1b2C3..."`.
+* Mỗi lần khởi động Tool hoặc định kỳ (để duy trì), Tool tự lấy Key từ `config.json` gửi lên Server xác thực. Nếu hết hạn/sai Key -> Dừng Bot và hiện lại Cửa sổ yêu cầu nhập Key.
+
+
+
+#### **B. Cơ chế Anti-WebDebug & Bảo mật**
+
+Tích hợp đoạn Anti-Debug chặt chẽ trên Web Panel:
+
+1. Chống mở Context Menu (Chuột phải), F12, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U`, `Cmd+Alt+I`.
+2. Vòng lặp `debugger` liên tục kiểm tra DevTools:
+```javascript
+setInterval(function () {
+  var t = performance.now();
+  debugger;
+  if (performance.now() - t > 100) {
+    // Bật WebDebug phát hiện!
+    kickAndRevokeKey();
+  }
+}, 1000);
+
+```
+
+
+3. **Hành động khi phát hiện WebDebug**:
+* Gọi ngay API `/api/revoke-key` lên Server để **xóa/vô hiệu hóa Key** hiện tại trong Database.
+* Xóa toàn bộ DOM trang web, xóa `config.json` (hoặc xóa trường `key` trong config).
+* Điều hướng trang web về `about:blank` và dừng ngay lập tức mọi hoạt động của Mineflayer Bot.
+
+
+
+---
+
+### **5. KỊCH BẢN LUỒNG HOẠT ĐỘNG (FLOW SUMMARY)**
+
+```text
+[Khởi động Tool / Mở Web]
+        │
+        ▼
+Đọc config.json ──► Có Key? ──(Không)──► Hiển thị Modal [Lấy Key Free / Mua VIP / Ô nhập Key]
+        │                                           │
+      (Có)                                          ├─► Click "Lấy Key Free" ─► Gọi Server ─► Rút gọn Link4m ─► Trả Link
+        │                                           └─► Click "Mua VIP" ─────► Chuyển sang Discord Admin
+        ▼
+Gửi Key + IP lên Key Server Check
+        │
+        ├─► Key Sai / Hết hạn / Khác IP ──► Hiện Modal Báo lỗi ──► Dừng Bot
+        │
+        └─► Key Hợp lệ ──────────────────► Lưu/Giữ Key ─────────► Chạy Mineflayer Bot bình thường
+                                                    │
+                                                    ▼
+                                     [Anti-WebDebug phát hiện F12/Debug]
+                                                    │
+                                                    ▼
+                                     1. Gọi Server Revoke/Xóa Key trong DB
+                                     2. Xóa Key khỏi config.json
+                                     3. Dừng Bot & Xóa giao diện Web (about:blank)
+
+```

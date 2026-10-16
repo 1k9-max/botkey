@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Nguc Bot | License</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f5f8;--panel:#fff;--text:#1d2330;--muted:#6b7385;--line:#dde1e9;--accent:#2f6feb;--danger:#d64545;--ok:#1f9d55}
+@media(prefers-color-scheme:dark){:root{--bg:#14171d;--panel:#1d222b;--text:#e8ebf1;--muted:#98a1b3;--line:#2d3440;--accent:#5b92ff;--danger:#ef6b6b;--ok:#3ccf7e}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{width:min(100% - 32px,520px);margin:0 auto;padding:clamp(48px,12vh,120px) 0 40px}h1{margin:0;font-size:28px}p{color:var(--muted)}.eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--accent)}.panel{margin-top:22px;padding:20px;background:var(--panel);border:1px solid var(--line);border-radius:8px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,.button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 15px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--text);font:inherit;text-decoration:none;cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:white;font-weight:650}button:disabled{opacity:.6;cursor:wait}label{display:block;margin:14px 0 6px;font-size:13px;color:var(--muted)}input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.result{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.result[hidden]{display:none}.link{display:block;overflow-wrap:anywhere;color:var(--accent)}.small{font-size:13px}.error{color:var(--danger)}.success{color:var(--ok)}
+</style>
+</head>
+<body>
+<main class="wrap">
+	<p class="eyebrow">Nguc Bot</p>
+	<h1>License key</h1>
+	<p>Nhận key free 12 giờ cho một IP bot, hoặc liên hệ admin để mua VIP.</p>
+	<section class="panel" aria-label="Lấy key">
+		<button class="primary" id="getKey" type="button">Lấy key free</button>
+		<a class="button" id="buyVip" hidden target="_blank" rel="noopener noreferrer">Mua VIP qua Discord</a>
+		<p id="contactUnavailable" class="small">Liên hệ VIP chưa được cấu hình.</p>
+		<div id="result" class="result" hidden>
+			<label for="key">Key của bạn</label>
+			<input id="key" type="text" readonly autocomplete="off">
+			<div class="actions"><a id="shortLink" class="link" hidden target="_blank" rel="noopener noreferrer">Mở link rút gọn</a></div>
+			<p id="expiry" class="small"></p>
+			<p id="warning" class="small"></p>
+		</div>
+		<p id="message" class="small" role="status" aria-live="polite"></p>
+	</section>
+</main>
+<script>
+var expiryTimer = null;
+var sharedKey = new URLSearchParams(location.search).get('key') || '';
+function $(id) { return document.getElementById(id); }
+function showMessage(text, error) { $('message').textContent = text; $('message').className = 'small' + (error ? ' error' : ' success'); }
+function showKey(result) {
+	$('key').value = result.key;
+	$('result').hidden = false;
+	$('warning').textContent = result.warning || '';
+	var shortLink = result.shortUrl || '';
+	$('shortLink').href = shortLink;
+	$('shortLink').hidden = !shortLink;
+	clearInterval(expiryTimer);
+	var expires = Date.parse(result.expiresAt);
+	if (!Number.isFinite(expires)) { $('expiry').textContent = 'Key được mở từ link chia sẻ.'; return; }
+	function tick() {
+		var left = expires - Date.now();
+		if (left <= 0) { $('expiry').textContent = 'Key đã hết hạn.'; clearInterval(expiryTimer); return; }
+		var hours = Math.floor(left / 3600000);
+		var minutes = Math.floor(left % 3600000 / 60000);
+		var seconds = Math.floor(left % 60000 / 1000);
+		$('expiry').textContent = 'Còn ' + hours + ' giờ ' + minutes + ' phút ' + seconds + ' giây';
+	}
+	tick(); expiryTimer = setInterval(tick, 1000);
+}
+$('getKey').addEventListener('click', function () {
+	var button = this; button.disabled = true; showMessage('Đang tạo key...');
+	fetch('/api/license/free', { method: 'POST' }).then(function (response) {
+		return response.json().then(function (data) { if (!response.ok) throw new Error(data.error || 'Không tạo được key.'); return data; });
+	}).then(function (data) { showKey(data); showMessage('Key đã được tạo.'); }).catch(function (error) { showMessage(error.message, true); }).finally(function () { button.disabled = false; });
+});
+fetch('/api/license/contact').then(function (response) { return response.json(); }).then(function (data) {
+	if (!data.url) return;
+	$('buyVip').href = data.url; $('buyVip').hidden = false; $('contactUnavailable').hidden = true;
+}).catch(function () {});
+if (sharedKey) { showKey({ key: sharedKey }); history.replaceState(null, '', location.pathname); }
+</script>
+</body>
+</html>

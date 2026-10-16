@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const { clientIp, destinationUrl, freeIssueWindow, generateKey } = require('../lib/license');
 const { database } = require('../lib/cloud');
@@ -34,6 +36,31 @@ function setEnv(values) {
     }
   };
 }
+
+test('server-side srv.json values are used for deployment secrets and env wins over file', () => {
+  const srvPath = path.join(__dirname, '..', 'srv.json');
+  const previousContent = fs.existsSync(srvPath) ? fs.readFileSync(srvPath, 'utf8') : null;
+  const previousEnv = { ADMIN_TOKEN: process.env.ADMIN_TOKEN, PUBLIC_APP_URL: process.env.PUBLIC_APP_URL };
+
+  try {
+    fs.writeFileSync(srvPath, JSON.stringify({ cloud: { adminToken: 'srv-admin-token', publicAppUrl: 'https://srv.example' } }, null, 2));
+    delete require.cache[require.resolve('../lib/app-config')];
+    const { getConfigValue } = require('../lib/app-config');
+
+    assert.equal(getConfigValue('ADMIN_TOKEN'), 'srv-admin-token');
+    process.env.ADMIN_TOKEN = 'env-admin-token';
+    assert.equal(getConfigValue('ADMIN_TOKEN'), 'env-admin-token');
+    assert.equal(getConfigValue('PUBLIC_APP_URL'), 'https://srv.example');
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    if (previousContent === null) fs.unlinkSync(srvPath);
+    else fs.writeFileSync(srvPath, previousContent);
+    delete require.cache[require.resolve('../lib/app-config')];
+  }
+});
 
 test('generated keys are 30 random hexadecimal characters', () => {
   const first = generateKey();
@@ -172,7 +199,7 @@ test('VIP key creation requires admin token and stores the selected expiry', asy
 test('generated destination links require the configured HTTPS origin', () => {
   const restoreEnv = setEnv({ PUBLIC_APP_URL: 'https://bot.example' });
   try {
-    assert.equal(destinationUrl({ headers: {} }, 'c'.repeat(30)), `https://bot.example/?key=${'c'.repeat(30)}`);
+    assert.equal(destinationUrl({ headers: {} }, 'c'.repeat(30)), `https://bot.example/license.html?key=${'c'.repeat(30)}`);
     process.env.PUBLIC_APP_URL = 'http://bot.example';
     assert.throws(() => destinationUrl({ headers: {} }, 'c'.repeat(30)), /HTTPS/);
   } finally {

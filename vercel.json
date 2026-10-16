@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/", "destination": "/license.html", "permanent": false },
+    { "source": "/admin", "destination": "/index.html", "permanent": false }
+  ]
+}

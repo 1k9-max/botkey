@@ -9,7 +9,7 @@
     "start": "node nguc3.js",
     "build:bot": "node scripts/build-bot.js",
     "start:protected": "npm run build:bot && node bot.js",
-    "check": "node --check nguc3.js && node --check scripts/build-bot.js && node --check lib/cloud.js && node --check lib/settings.js && node --check lib/license.js && node --check api/config.js && node --check api/agent.js && node --check api/state.js && node --check api/logs.js && node --check api/reconnect.js && node --check api/license/free.js && node --check api/license/verify.js && node --check api/license/keys.js && node --check api/license/contact.js && node -e 'const fs=require(\"fs\");const h=fs.readFileSync(\"index.html\",\"utf8\");for(const m of h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g))new Function(m[1])'",
+    "check": "node --check nguc3.js && node --check scripts/build-bot.js && node --check scripts/check-html.js && node --check lib/cloud.js && node --check lib/settings.js && node --check lib/license.js && node --check api/config.js && node --check api/agent.js && node --check api/state.js && node --check api/logs.js && node --check api/reconnect.js && node --check api/license/free.js && node --check api/license/verify.js && node --check api/license/keys.js && node --check api/license/contact.js && node scripts/check-html.js",
     "test": "node --test"
   },
   "dependencies": {

@@ -4,7 +4,9 @@ Dashboard và API chạy trên Vercel, dữ liệu lưu trong Supabase, còn bot
 
 ## Thành phần
 
-- `index.html`: dashboard lấy key free và giao diện quản trị.
+- `license.html`: trang public lấy key free/mua VIP, không có ô admin hoặc tài khoản bot.
+- `index.html`: giao diện quản trị cũ, truy cập riêng qua `/admin` trên Vercel.
+- `vercel.json`: chuyển root URL sang trang public và giữ `/admin` riêng.
 - `api/`: Vercel Functions cho cấu hình, trạng thái, log, license và bot agent.
 - `supabase/schema.sql`: schema khởi tạo database.
 - `nguc3.js`: source bot để phát triển.
@@ -26,7 +28,8 @@ ZIP không chứa `.git/`, `node_modules/`, `.env` thật hoặc `config.json`; 
 
 1. Đẩy repository lên GitHub và import repo từ **Vercel > New Project > Import Git Repository**.
 2. Chọn Framework Preset **Other**, Root Directory là thư mục dự án; để Build Command và Output Directory trống.
-3. Thêm các Environment Variables sau trong Project Settings:
+3. Dùng `srv.json` ở root project để lưu các giá trị server-side nhạy cảm khi đang triển khai local/hosting. File này là config riêng cho máy chủ; `config.json` còn để trên máy người dùng. Nếu biến env không có giá trị, app sẽ tự fallback qua `srv.json`; nếu cả hai đều trống thì mới trả về giá trị ở `config.json` cho các field không nhạy cảm.
+4. Thêm các Environment Variables sau trong Project Settings:
 
 | Variable | Giá trị |
 | --- | --- |
@@ -38,7 +41,7 @@ ZIP không chứa `.git/`, `node_modules/`, `.env` thật hoặc `config.json`; 
 | `PUBLIC_APP_URL` | URL HTTPS production của dashboard, ví dụ `https://your-project.vercel.app` |
 | `VIP_CONTACT_URL` | Link HTTPS Discord để khách liên hệ mua VIP |
 
-Tạo `ADMIN_TOKEN` và `BOT_TOKEN` khác nhau, đủ dài và ngẫu nhiên. Ví dụ: `openssl rand -hex 32`. Đặt `PUBLIC_APP_URL` là domain HTTPS production chính xác. Redeploy sau khi thêm biến môi trường. Mở URL Vercel và đăng nhập bằng `ADMIN_TOKEN`.
+Tạo `ADMIN_TOKEN` và `BOT_TOKEN` khác nhau, đủ dài và ngẫu nhiên. Ví dụ: `openssl rand -hex 32`. Đặt `PUBLIC_APP_URL` là domain HTTPS production chính xác. Redeploy sau khi thêm biến môi trường. Root URL (`/`) là trang public lấy key; `/admin` mở giao diện quản trị cũ và yêu cầu `ADMIN_TOKEN`. Trang public không có ô nhập admin token hoặc tài khoản Minecraft.
 
 `LINK4M_API_KEY` chỉ được dùng trong Vercel Function, không đi xuống browser. Nếu chưa có key Link4m hoặc dịch vụ rút gọn lỗi, API vẫn trả link trực tiếp kèm cảnh báo. `VIP_CONTACT_URL` phải là link HTTPS thuộc `discord.gg` hoặc `discord.com`.
 
@@ -62,17 +65,19 @@ npm run start:protected
 
 Obfuscation chỉ làm source khó đọc hơn, không phải mã hóa an toàn: người có thể chạy bot vẫn có thể phân tích file hoặc quan sát các kết nối mạng. Không nhúng secret vào bot; giữ token trong environment variables. Địa chỉ server cũng có thể bị quan sát lúc kết nối. Nên để repository chứa source ở chế độ private nếu không muốn công khai mã nguồn.
 
-Để chạy local, để trống cả `BOT_API_URL` và `BOT_TOKEN`, đặt `LICENSE_API_URL` tới URL production Vercel, rồi chạy `npm start` khi phát triển hoặc `npm run start:protected` để build/chạy `bot.js`. Mở `http://localhost:3000`, nhập tên/mật khẩu/key rồi **Lưu**. Key mới được xác minh trước khi ghi vào `config.json`; key sai không ghi đè key hợp lệ hiện có.
+Để chạy local, để trống cả `BOT_API_URL` và `BOT_TOKEN`, đặt `LICENSE_API_URL` tới URL production Vercel, rồi chạy `npm start` khi phát triển hoặc `npm run start:protected` để build/chạy `bot.js`. Mở `http://localhost:3000`, nhập tên/mật khẩu rồi **Lưu**. Dùng nút **Start bot**/**Stop bot** để điều khiển kết nối; mở tool không tự khởi động bot ở chế độ local.
+
+Nếu key thiếu/sai/hết hạn, panel local mở popup license không thể đóng cho đến khi server xác nhận key hợp lệ. Popup có hai lựa chọn **Lấy key free** và **Mua key VIP**. Key free tự được xác minh/lưu sau khi tạo; key VIP nhập vào ô key sẽ tự xác minh khi đủ 30 ký tự. Key sai không ghi đè key hợp lệ, popup vẫn giữ và bot không thể Start. Không có nút Copy key.
 
 ## License keys
 
-Trang public có nút **Lấy key free và link**. Mỗi IP tạo tối đa một key trong một cửa sổ 12 giờ UTC; key free hết hạn 12 giờ tính từ lúc tạo. Link4m rút gọn URL dashboard có query `key`; nếu tạo key qua link, trang hiển thị key để copy.
+Trang public (`/` hoặc `/license.html`) có nút **Lấy key free** và **Mua VIP qua Discord**. Mỗi IP tạo tối đa một key trong một cửa sổ 12 giờ UTC; key free hết hạn 12 giờ tính từ lúc tạo. Link4m rút gọn URL `/license.html?key=...`; mở link sẽ hiển thị key, không có nút Copy.
 
 Admin đăng nhập bằng `ADMIN_TOKEN`, mở tab **License**, chọn thời hạn giờ từ 1 đến 87600 rồi tạo key VIP. Hạn VIP cũng bắt đầu từ lúc tạo. Danh sách admin hiển thị loại, trạng thái, thời hạn và IP đã gắn; nút **Thu hồi** vô hiệu key. Nút mua VIP mở `VIP_CONTACT_URL`.
 
 Key có 30 ký tự hex ngẫu nhiên. Database lưu key, thời điểm tạo/hết hạn, IP tạo và IP bind. IP không bind khi người dùng mở link; lần bot đầu tiên xác minh thành công sẽ gắn key với IP public đầu ra của máy chạy bot. Key đã bind không dùng được trên IP khác. Bot kiểm tra lại mỗi phút; key hết hạn/bị thu hồi thì bot dừng và không tự reconnect.
 
-Nếu DevTools bị phát hiện trong panel local, app xóa key khỏi `config.json` trên máy đó và dừng bot. Đây không thu hồi key trong database; admin có thể thu hồi key từ tab License. Không dùng dấu hiệu DevTools để thu hồi server-side vì trình duyệt có thể giả mạo tín hiệu đó.
+Nếu DevTools bị phát hiện trong panel local, app xóa key khỏi `config.json` trên máy đó, dừng bot và chuyển sang video Rick Astley. Đây không thu hồi key trong database; admin có thể thu hồi key từ tab License. Không dùng dấu hiệu DevTools để thu hồi server-side vì trình duyệt có thể giả mạo tín hiệu đó.
 
 ## Web DevTools và bảo mật
 

@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { sanitizeSettings } = require('./lib/settings');
+const { appConfig, getConfigValue } = require('./lib/app-config');
 
 const stdoutWrite = process.stdout.write.bind(process.stdout);
 const print = (msg) => stdoutWrite(msg + '\n');
@@ -25,22 +26,35 @@ const isNoiseError = (err) => {
 };
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
-const WEB_HOST = process.env.WEB_HOST || '127.0.0.1';
-const WEB_PORT = parseInt(process.env.WEB_PORT || '3000', 10);
-const BOT_API_URL = String(process.env.BOT_API_URL || '').replace(/\/+$/, '');
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
-const LICENSE_API_URL = String(process.env.LICENSE_API_URL || BOT_API_URL || '').replace(/\/+$/, '');
+const WEB_HOST = String(getConfigValue('WEB_HOST') || '127.0.0.1');
+const WEB_PORT = Number.parseInt(getConfigValue('WEB_PORT') || '3000', 10);
+const BOT_API_URL = String(getConfigValue('BOT_API_URL') || '').replace(/\/+$/, '');
+const BOT_TOKEN = String(getConfigValue('BOT_TOKEN') || '');
+const LICENSE_API_URL = String(getConfigValue('LICENSE_API_URL') || BOT_API_URL || '').replace(/\/+$/, '');
 const remoteLogQueue = [];
 
 const config = {
   server: {
-    host: process.env.MC_HOST || '',
-    port: Number.parseInt(process.env.MC_PORT || '19000', 10),
-    version: process.env.MC_VERSION || '1.21.4',
+    host: String(getConfigValue('MC_HOST') || ''),
+    port: Number.parseInt(getConfigValue('MC_PORT') || '19000', 10),
+    version: String(getConfigValue('MC_VERSION') || '1.21.4'),
     username: '',
     password: ''
   },
   licenseKey: '',
+
+  web: { host: WEB_HOST, port: WEB_PORT },
+  cloud: {
+    botApiUrl: BOT_API_URL,
+    botToken: BOT_TOKEN,
+    licenseApiUrl: String(getConfigValue('LICENSE_API_URL') || ''),
+    adminToken: String(getConfigValue('ADMIN_TOKEN') || ''),
+    supabaseUrl: String(getConfigValue('SUPABASE_URL') || ''),
+    supabaseServiceRoleKey: String(getConfigValue('SUPABASE_SERVICE_ROLE_KEY') || ''),
+    link4mApiKey: String(getConfigValue('LINK4M_API_KEY') || ''),
+    publicAppUrl: String(getConfigValue('PUBLIC_APP_URL') || ''),
+    vipContactUrl: String(getConfigValue('VIP_CONTACT_URL') || '')
+  },
 
   party: {
     inviteName: '',
@@ -418,6 +432,7 @@ function createBot() {
     loggedIn: false,
     ended: false,
     restart: false,
+    manualStop: false,
     spawnedAt: 0,
     lastPacketAt: Date.now(),
     loginSentAt: 0,
@@ -515,6 +530,12 @@ function createBot() {
     session.ended = true;
     clearInterval(session.watchdog);
 
+    if (session.manualStop) {
+      failStreak = 0;
+      log(C.yellow, '[bot] Đã dừng theo yêu cầu.');
+      return;
+    }
+
     const lived = session.spawnedAt ? Date.now() - session.spawnedAt : 0;
     log(C.red, `[-] Bot ngắt kết nối (${reason || 'không rõ lý do'}) sau ${Math.round(lived / 1000)}s trong game.`);
 
@@ -544,7 +565,13 @@ function saveConfig() {
     server: { ...config.server },
     licenseKey: config.licenseKey,
     party: { inviteName: config.party.inviteName },
-    friends: config.friends
+    friends: config.friends,
+    accept: { ...config.accept },
+    debug: config.debug,
+    watchdog: { ...config.watchdog },
+    reconnect: { ...config.reconnect },
+    web: { ...config.web },
+    cloud: { ...config.cloud }
   };
   const tmp = CONFIG_PATH + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
@@ -566,10 +593,23 @@ function loadConfig() {
   }
 
   const s = (raw && raw.server) || {};
-  if (typeof s.host === 'string' && s.host.trim()) config.server.host = s.host.trim();
+  if (typeof s.host === 'string') config.server.host = s.host.trim();
   const port = parseInt(s.port, 10);
   if (port > 0 && port < 65536) config.server.port = port;
   if (typeof s.version === 'string' && s.version.trim()) config.server.version = s.version.trim();
+
+  const web = raw.web || {};
+  if (typeof web.host === 'string' && web.host.trim()) config.web.host = web.host.trim();
+  const webPort = parseInt(web.port, 10);
+  if (webPort > 0 && webPort < 65536) config.web.port = webPort;
+  const cloud = raw.cloud || {};
+  for (const key of Object.keys(config.cloud)) {
+    if (typeof cloud[key] === 'string') config.cloud[key] = cloud[key];
+  }
+  if (raw.accept && typeof raw.accept === 'object') config.accept = { ...config.accept, ...raw.accept };
+  if (typeof raw.debug === 'boolean') config.debug = raw.debug;
+  if (raw.watchdog && typeof raw.watchdog === 'object') config.watchdog = { ...config.watchdog, ...raw.watchdog };
+  if (raw.reconnect && typeof raw.reconnect === 'object') config.reconnect = { ...config.reconnect, ...raw.reconnect };
 
   const r = sanitizeSettings({
     username: s.username,
@@ -642,6 +682,12 @@ button{font:inherit;cursor:pointer}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:all .2s;max-width:90%}
 .toast.show{opacity:1;transform:translateX(-50%)}
 .toast.bad{background:var(--danger)}
+.license-modal{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
+.license-modal[hidden]{display:none}
+.license-dialog{width:min(100%,440px);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px}
+.license-dialog h2{font-size:17px;margin:0 0 8px}
+.license-dialog p{font-size:13px;color:var(--muted)}
+.license-dialog-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 </style>
 </head>
 <body>
@@ -716,9 +762,24 @@ button{font:inherit;cursor:pointer}
     <div class="actions">
       <button class="btn primary" id="save" type="button">Lưu</button>
       <button class="btn" id="reconnect" type="button">Kết nối lại</button>
+      <button class="btn primary" id="startBot" type="button">Start bot</button>
+      <button class="btn" id="stopBot" type="button">Stop bot</button>
     </div>
     <p class="note">Danh sách bạn bè áp dụng ngay khi lưu. Tên/mật khẩu bot và tên mời tổ đội áp dụng ở lần kết nối kế tiếp — bấm "Kết nối lại" để áp dụng luôn.</p>
   </div>
+</div>
+<div class="license-modal" id="licenseModal" hidden>
+  <section class="license-dialog" role="dialog" aria-modal="true" aria-labelledby="licenseTitle">
+    <h2 id="licenseTitle">License key cần được xác minh</h2>
+    <p id="licenseMessage">Nhập key hợp lệ để bắt đầu bot.</p>
+    <label class="field"><span>License key</span><input type="text" id="modalKey" maxlength="64" autocomplete="off" spellcheck="false"></label>
+    <div class="license-dialog-actions">
+      <button class="btn" id="modalGetKey" type="button">Lấy key free</button>
+      <a class="btn" id="modalBuyVip" target="_blank" rel="noopener noreferrer" hidden>Mua key VIP</a>
+    </div>
+    <p id="modalKeyInfo"></p>
+    <p><a id="modalShortLink" target="_blank" rel="noopener noreferrer" hidden>Mở link rút gọn</a></p>
+  </section>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -729,9 +790,7 @@ button{font:inherit;cursor:pointer}
     if (dead) return;
     dead = true;
     try { navigator.sendBeacon('/api/debug', ''); } catch (e) {}
-    try { window.stop(); } catch (e) {}
-    document.documentElement.innerHTML = '';
-    location.replace('about:blank');
+    location.replace('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
   }
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   document.addEventListener('keydown', function (e) {
@@ -826,10 +885,61 @@ function load() {
     $('password').value = c.password;
     $('inviteName').value = c.inviteName;
     $('licenseKey').value = new URLSearchParams(location.search).get('key') || c.licenseKey || '';
+    if (!$('modalKey').value) $('modalKey').value = $('licenseKey').value;
     if (location.search) history.replaceState(null, '', location.pathname);
     friends = c.friends;
     renderFriends();
   }).catch(function (e) { toast(e.message, true); });
+}
+
+var modalVerifyTimer = null;
+function showLicenseModal(message) {
+  $('licenseMessage').textContent = message || 'Nhập key hợp lệ để bắt đầu bot.';
+  if ($('licenseModal').hidden) $('modalKey').value = $('licenseKey').value || '';
+  $('licenseModal').hidden = false;
+}
+
+function applyModalKey() {
+  var key = $('modalKey').value.trim();
+  if (!/^[a-f0-9]{30}$/i.test(key)) return Promise.reject(new Error('Key phải gồm đúng 30 ký tự hex.'));
+  $('modalKey').disabled = true;
+  $('modalGetKey').disabled = true;
+  $('licenseMessage').textContent = 'Đang xác minh key từ máy này...';
+  $('licenseKey').value = key;
+  return save().then(function () {
+    $('licenseModal').hidden = true;
+    $('licenseMessage').textContent = 'Key hợp lệ.';
+    toast('Key hợp lệ đã được lưu');
+    refreshStatus();
+  }).catch(function (error) {
+    $('licenseMessage').textContent = error.message || 'Key không hợp lệ.';
+    throw error;
+  }).finally(function () {
+    $('modalKey').disabled = false;
+    $('modalGetKey').disabled = false;
+  });
+}
+
+function loadVipContact() {
+  api('GET', '/api/license/contact').then(function (result) {
+    if (!result.url) return;
+    $('modalBuyVip').href = result.url;
+    $('modalBuyVip').hidden = false;
+  }).catch(function () {});
+}
+
+function getLocalFreeKey() {
+  return api('POST', '/api/license/free', {}).then(function (result) {
+    $('modalKey').value = result.key;
+    $('licenseKey').value = result.key;
+    $('modalKeyInfo').textContent = result.expiresAt
+      ? 'Key free hết hạn lúc ' + new Date(result.expiresAt).toLocaleString() + '.'
+      : '';
+    $('modalShortLink').href = result.shortUrl || result.destinationUrl || '';
+    $('modalShortLink').hidden = !$('modalShortLink').href;
+    if (result.warning) $('modalKeyInfo').textContent += ' ' + result.warning;
+    return applyModalKey();
+  });
 }
 
 function refreshStatus() {
@@ -837,7 +947,11 @@ function refreshStatus() {
     $('dot').className = 'dot' + (s.online ? ' on' : '');
     $('statusText').textContent = s.online
       ? (s.loggedIn ? 'Online - đã đăng nhập' : 'Online')
-      : (s.hasUsername ? 'Offline / đang kết nối' : 'Chưa nhập tên bot');
+      : (s.hasUsername ? (s.licenseValid ? 'Offline' : 'Chưa xác minh key') : 'Chưa nhập tên bot');
+    $('startBot').disabled = !s.licenseValid || !s.hasUsername || s.running;
+    $('stopBot').disabled = !s.running;
+    if (!s.licenseValid) showLicenseModal('Key thiếu, sai hoặc hết hạn. Lấy key free hoặc nhập key VIP để chạy bot.');
+    if (s.licenseValid) $('licenseModal').hidden = true;
   }).catch(function () {
     $('dot').className = 'dot';
     $('statusText').textContent = 'Mất kết nối tới chương trình';
@@ -870,6 +984,20 @@ document.querySelectorAll('.tab').forEach(function (btn) {
 
 $('showPass').addEventListener('change', function () { $('password').type = this.checked ? 'text' : 'password'; });
 
+$('modalGetKey').addEventListener('click', function () {
+  var button = this; button.disabled = true;
+  getLocalFreeKey().catch(function (error) { $('licenseMessage').textContent = error.message; toast(error.message, true); })
+    .finally(function () { button.disabled = false; });
+});
+$('modalKey').addEventListener('input', function () {
+  clearTimeout(modalVerifyTimer);
+  var key = this.value.trim();
+  if (!/^[a-f0-9]{30}$/i.test(key)) return;
+  modalVerifyTimer = setTimeout(function () {
+    applyModalKey().catch(function (error) { toast(error.message, true); });
+  }, 500);
+});
+
 $('addFriend').addEventListener('click', function () {
   friends.push({ name: '', enabled: true });
   renderFriends();
@@ -886,6 +1014,16 @@ $('reconnect').addEventListener('click', function () {
   save().then(function () { return api('POST', '/api/reconnect'); })
         .then(function () { toast('Đã lưu và đang kết nối lại...'); })
         .catch(function (e) { toast(e.message, true); });
+});
+
+$('startBot').addEventListener('click', function () {
+  save().then(function () { return api('POST', '/api/start', {}); })
+    .then(function () { toast('Đã gửi yêu cầu Start bot'); refreshStatus(); })
+    .catch(function (error) { showLicenseModal(error.message); toast(error.message, true); });
+});
+$('stopBot').addEventListener('click', function () {
+  api('POST', '/api/stop', {}).then(function () { toast('Đã dừng bot'); refreshStatus(); })
+    .catch(function (error) { toast(error.message, true); });
 });
 
 var lastLogId = 0;
@@ -935,6 +1073,7 @@ $('logChatOnly').addEventListener('change', function () { applyLogFilter(); scro
 
 load();
 refreshStatus();
+loadVipContact();
 pollLogs();
 setInterval(refreshStatus, 3000);
 setInterval(pollLogs, 1500);
@@ -1001,6 +1140,22 @@ function startWebServer() {
           friends: config.friends
         });
       }
+      if (req.method === 'POST' && url === '/api/license/free') {
+        if (!LICENSE_API_URL) return sendJson(res, 503, { error: 'Thiếu LICENSE_API_URL để tạo key.' });
+        const upstream = new URL(`${LICENSE_API_URL}/api/license/free`);
+        if (upstream.protocol !== 'https:') return sendJson(res, 503, { error: 'LICENSE_API_URL phải dùng HTTPS.' });
+        const response = await fetch(upstream, { method: 'POST', signal: AbortSignal.timeout(12000) });
+        const result = await response.json();
+        return sendJson(res, response.status, result);
+      }
+      if (req.method === 'GET' && url === '/api/license/contact') {
+        if (!LICENSE_API_URL) return sendJson(res, 200, { url: '' });
+        const upstream = new URL(`${LICENSE_API_URL}/api/license/contact`);
+        if (upstream.protocol !== 'https:') return sendJson(res, 503, { error: 'LICENSE_API_URL phải dùng HTTPS.' });
+        const response = await fetch(upstream, { signal: AbortSignal.timeout(8000) });
+        const result = await response.json();
+        return sendJson(res, response.status, result);
+      }
       if (req.method === 'POST' && url === '/api/debug') {
         const origin = req.headers.origin;
         if (origin) {
@@ -1020,12 +1175,14 @@ function startWebServer() {
         const s = current;
         return sendJson(res, 200, {
           online: !!(s && !s.ended && s.bot && s.bot.entity),
+          running: !!(s && !s.ended && !s.manualStop),
           loggedIn: !!(s && s.loggedIn),
+          licenseValid,
           hasUsername: !!config.server.username
         });
       }
 
-      if (req.method === 'POST' && (url === '/api/config' || url === '/api/reconnect')) {
+      if (req.method === 'POST' && ['/api/config', '/api/reconnect', '/api/start', '/api/stop'].includes(url)) {
 
         const origin = req.headers.origin;
         if (origin) {
@@ -1037,6 +1194,24 @@ function startWebServer() {
           return sendJson(res, 415, { error: 'Cần Content-Type: application/json.' });
         }
         const body = await readBody(req);
+
+        if (url === '/api/start') {
+          if (!config.server.username) return sendJson(res, 400, { error: 'Nhập và lưu tài khoản Minecraft trước.' });
+          if (!licenseValid && !(await verifyLicense())) return sendJson(res, 403, { error: 'Cần license key hợp lệ để chạy bot.' });
+          if (current && !current.ended && current.manualStop) return sendJson(res, 409, { error: 'Bot đang dừng, thử lại sau giây lát.' });
+          if (!current || current.ended) { failStreak = 0; createBot(); }
+          return sendJson(res, 200, { ok: true, running: true });
+        }
+
+        if (url === '/api/stop') {
+          clearTimeout(reconnectTimer);
+          if (current && !current.ended) {
+            current.manualStop = true;
+            current.restart = false;
+            endSession(current, 'dừng theo yêu cầu từ web');
+          }
+          return sendJson(res, 200, { ok: true, running: false });
+        }
 
         if (url === '/api/reconnect') {
           if (!licenseValid && !(await verifyLicense())) {
@@ -1068,13 +1243,9 @@ function startWebServer() {
         if (licenseKeyChanged) {
           licenseValid = true;
           if (current && !current.ended) reconnectNow();
-          else if (config.server.username) createBot();
         } else if (!licenseValid) {
-          if (await verifyLicense()) {
-            if (current && !current.ended) reconnectNow();
-            else if (config.server.username) createBot();
-          }
-        } else if (!hadName && config.server.username && !current && licenseValid) createBot();
+          if (await verifyLicense() && current && !current.ended && hadName && config.server.username) reconnectNow();
+        }
 
         return sendJson(res, 200, { ok: true, friends: config.friends, licenseKey: config.licenseKey });
       }
@@ -1108,6 +1279,7 @@ async function main() {
     log(C.red, `[X] Uncaught Exception: ${(err && err.message) || err}`);
   });
 
+  loadConfig();
   if (!!BOT_API_URL !== !!BOT_TOKEN) {
     print('Cần cấu hình đồng thời BOT_API_URL và BOT_TOKEN, hoặc bỏ cả hai để chạy local.');
     return;
@@ -1121,14 +1293,15 @@ async function main() {
     }
     setInterval(syncRemote, 10000);
   } else {
-    loadConfig();
     startWebServer();
   }
-  if (await verifyLicense()) createBot();
-  else log(C.red, '[license] Bot đang dừng cho đến khi nhập key hợp lệ.');
+  const validLicense = await verifyLicense();
+  if (BOT_API_URL && validLicense) createBot();
+  else if (!validLicense) log(C.red, '[license] Bot đang dừng cho đến khi nhập key hợp lệ.');
+  else log(C.green, '[bot] License hợp lệ. Nhập/lưu tài khoản rồi bấm Start bot trong panel local.');
   setInterval(async () => {
     const wasValid = licenseValid;
-    if (await verifyLicense() && !wasValid && !current && config.server.username) createBot();
+    if (BOT_API_URL && await verifyLicense() && !wasValid && !current && config.server.username) createBot();
   }, 60000);
 }
 
