@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AFK Bot</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f5f8;--card:#fff;--text:#1d2330;--muted:#6b7385;--line:#dde1e9;--accent:#2f6feb;--danger:#d64545;--ok:#1f9d55;--off:#c3c9d6}
+@media(prefers-color-scheme:dark){:root{--bg:#14171d;--card:#1d222b;--text:#e8ebf1;--muted:#98a1b3;--line:#2d3440;--accent:#5b92ff;--danger:#ef6b6b;--ok:#3ccf7e;--off:#465063}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:620px;margin:0 auto;padding:24px 16px 48px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}h1{font-size:20px;margin:0}.status{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}.dot{width:9px;height:9px;border-radius:50%;background:var(--off)}.dot.on{background:var(--ok)}.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px}.login{margin-top:12vh}.login h2{font-size:17px;margin:0 0 12px}.login p,.hint,.note{font-size:13px;color:var(--muted)}label.field{display:block;margin-bottom:14px}label.field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}input[type=text],input[type=password]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}input:focus{outline:2px solid var(--accent);outline-offset:-1px}.check{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:6px}.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 14px;font:inherit;cursor:pointer}.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}.panel{display:none}.panel.active{display:block}.field{display:block;margin-bottom:14px}.field:last-child{margin-bottom:0}.row{display:flex;gap:10px;align-items:center;margin-bottom:8px}.row input[type=text]{flex:1}.switch{position:relative;width:42px;height:24px;flex:none;cursor:pointer}.switch input{position:absolute;opacity:0;inset:0;margin:0}.switch span{position:absolute;inset:0;background:var(--off);border-radius:12px;transition:background .15s}.switch span:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}.switch input:checked+span{background:var(--ok)}.switch input:checked+span:after{transform:translateX(18px)}button{font:inherit;cursor:pointer}.icon{width:34px;height:34px;flex:none;border:1px solid var(--line);background:none;color:var(--muted);border-radius:6px}.icon:hover{color:var(--danger);border-color:var(--danger)}.add{width:100%;margin-top:4px;padding:8px;border:1px dashed var(--line);background:none;color:var(--accent);border-radius:6px}.actions{display:flex;gap:10px;margin-top:16px}.btn{padding:9px 14px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--text)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}.tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:var(--muted)}.tools label{display:flex;gap:6px;align-items:center;cursor:pointer}.tools .btn{padding:5px 10px;font-size:13px;margin-left:auto}.logbox{height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;word-break:break-word}.ln .t{color:var(--muted);margin-right:6px}.k-chat{color:var(--accent)}.k-err{color:var(--danger)}.k-ok{color:var(--ok)}.empty{color:var(--muted)}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;padding:10px 16px;border-radius:6px;opacity:0;pointer-events:none;transition:all .2s;max-width:90%}.toast.show{opacity:1;transform:translateX(-50%)}.toast.bad{background:var(--danger)}
+.license-result{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.license-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}.license-row code{overflow-wrap:anywhere}.license-row small{grid-column:1/-1;color:var(--muted)}
+.license-result{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.license-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}.license-row code{overflow-wrap:anywhere}.license-row small{grid-column:1/-1;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="card login" id="login">
+    <h2>AFK Bot</h2>
+    <p>Nhập Admin token đã cấu hình trong Vercel.</p>
+    <form id="loginForm">
+      <label class="field"><span>Admin token</span><input id="token" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Đăng nhập</button>
+    </form>
+    <div id="publicLicense">
+      <h2>Key miễn phí</h2>
+      <p class="hint">Key free có hiệu lực 12 giờ từ lúc tạo và chỉ dùng được trên một IP bot.</p>
+      <button class="btn primary" id="getFreeKey" type="button">Lấy key free và link</button>
+      <div id="issuedKeyResult" hidden>
+        <label class="field"><span>Key</span><input id="issuedKey" type="text" readonly></label>
+        <button class="btn" id="copyIssuedKey" type="button">Copy key</button>
+        <p id="keyExpiry" class="hint"></p>
+        <p><a id="issuedLink" target="_blank" rel="noopener noreferrer"></a></p>
+        <p id="freeKeyWarning" class="hint"></p>
+      </div>
+      <p><a class="btn" id="buyVip" hidden target="_blank" rel="noopener noreferrer">Mua VIP qua Discord</a><span id="vipUnavailable" class="hint">Liên hệ VIP chưa được cấu hình.</span></p>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <h1>AFK Bot</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">...</span></div>
+    </header>
+    <nav class="tabs" aria-label="Điều hướng">
+      <button class="tab active" data-tab="setting" type="button">Setting</button>
+      <button class="tab" data-tab="friend" type="button">Friend</button>
+      <button class="tab" data-tab="log" type="button">Log</button>
+      <button class="tab" data-tab="license" type="button">License</button>
+    </nav>
+    <section class="panel active" id="panel-setting">
+      <div class="card">
+        <label class="field"><span>Tên bot</span><input type="text" id="username" maxlength="32" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>Mật khẩu bot</span><input type="password" id="password" maxlength="100" autocomplete="off"><span class="check"><input type="checkbox" id="showPass"> Hiện mật khẩu</span></label>
+        <label class="field"><span>Tên mời tổ đội khi vào game</span><input type="text" id="inviteName" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Để trống để không mời"></label>
+        <label class="field"><span>License key</span><input type="text" id="licenseKey" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Nhập key 30 ký tự"></label>
+      </div>
+    </section>
+    <section class="panel" id="panel-friend">
+      <div class="card">
+        <p class="hint">Chỉ chấp nhận lời mời từ tên đang bật. Để trống hoặc tắt hết sẽ chấp nhận từ bất kỳ ai.</p>
+        <div id="friends"></div><button class="add" id="addFriend" type="button" title="Thêm tên">+</button>
+      </div>
+    </section>
+    <section class="panel" id="panel-log">
+      <div class="card">
+        <div class="tools"><label><input type="checkbox" id="logScroll" checked> Tự cuộn</label><label><input type="checkbox" id="logChatOnly"> Chỉ chat server</label><button class="btn" id="logClear" type="button">Xóa màn hình</button></div>
+        <div class="logbox" id="logbox"></div>
+      </div>
+    </section>
+    <section class="panel" id="panel-license">
+      <div class="card">
+        <h2>Key VIP</h2>
+        <div class="row"><label class="field" style="flex:1;margin:0"><span>Thời hạn (giờ)</span><input id="vipDuration" type="number" min="1" max="87600" value="720"></label><button class="btn primary" id="createVip" type="button">Tạo key VIP</button></div>
+        <div id="vipCreated" hidden></div>
+        <div class="actions"><button class="btn" id="refreshKeys" type="button">Tải lại danh sách</button></div>
+        <div id="keyList" aria-live="polite"></div>
+      </div>
+    </section>
+    <div id="actions">
+      <div class="actions"><button class="btn primary" id="save" type="button">Lưu</button><button class="btn" id="reconnect" type="button">Kết nối lại</button><button class="btn" id="logout" type="button">Đăng xuất</button></div>
+      <p class="note">Thay đổi tên hoặc mật khẩu sẽ được bot nhận trong vài giây. Kết nối lại để áp dụng ngay.</p>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+var friends = [];
+var token = '';
+var lastLogId = 0;
+var linkLicenseKey = new URLSearchParams(location.search).get('key') || '';
+var linkLandingUrl = location.href;
+var expiryTimer = null;
+if (linkLicenseKey) history.replaceState(null, '', location.pathname);
+function $(id) { return document.getElementById(id); }
+function toast(msg, bad) {
+  var el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(function () { el.className = 'toast'; }, 3000);
+}
+function api(method, url, body) {
+  return fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: body ? JSON.stringify(body) : undefined }).then(function (res) {
+    return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || 'Có lỗi xảy ra'); return data; });
+  });
+}
+function renderFriends() {
+  var box = $('friends');
+  box.textContent = '';
+  if (!friends.length) { var empty = document.createElement('p'); empty.className = 'hint'; empty.textContent = 'Chưa có tên nào. Bấm + để thêm.'; box.appendChild(empty); }
+  friends.forEach(function (friend, index) {
+    var row = document.createElement('div'); row.className = 'row';
+    var input = document.createElement('input'); input.type = 'text'; input.placeholder = 'Tên người chơi'; input.maxLength = 24; input.autocomplete = 'off'; input.spellcheck = false; input.value = friend.name;
+    input.addEventListener('input', function () { friend.name = input.value; });
+    var label = document.createElement('label'); label.className = 'switch'; label.title = 'Bật / tắt';
+    var checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = friend.enabled;
+    checkbox.addEventListener('change', function () { friend.enabled = checkbox.checked; });
+    label.appendChild(checkbox); label.appendChild(document.createElement('span'));
+    var remove = document.createElement('button'); remove.type = 'button'; remove.className = 'icon'; remove.textContent = '\u2715'; remove.title = 'Xóa';
+    remove.addEventListener('click', function () { friends.splice(index, 1); renderFriends(); });
+    row.appendChild(input); row.appendChild(label); row.appendChild(remove); box.appendChild(row);
+  });
+}
+function loadConfig() {
+  return api('GET', '/api/config').then(function (config) {
+    $('username').value = config.username; $('password').value = config.password; $('inviteName').value = config.inviteName;
+    $('licenseKey').value = linkLicenseKey || config.licenseKey;
+    friends = config.friends; renderFriends();
+  });
+}
+function refreshStatus() {
+  api('GET', '/api/state').then(function (status) {
+    $('dot').className = 'dot' + (status.online ? ' on' : '');
+    $('statusText').textContent = status.online ? (status.loggedIn ? 'Online - đã đăng nhập' : 'Online') : (status.hasUsername ? 'Offline / đang kết nối' : 'Chưa nhập tên bot');
+  }).catch(function () { $('dot').className = 'dot'; $('statusText').textContent = 'Không tải được trạng thái'; });
+}
+function save() {
+  return api('POST', '/api/config', { username: $('username').value, password: $('password').value, inviteName: $('inviteName').value, licenseKey: $('licenseKey').value, friends: friends }).then(function (result) {
+    friends = result.friends; renderFriends(); return result;
+  });
+}
+function scrollLog(force) { var box = $('logbox'); if (force || $('logScroll').checked) box.scrollTop = box.scrollHeight; }
+function addLogLine(log) {
+  var box = $('logbox'); var line = document.createElement('div'); line.className = 'ln k-' + log.kind;
+  var time = document.createElement('span'); time.className = 't'; time.textContent = log.t;
+  line.appendChild(time); line.appendChild(document.createTextNode(log.msg));
+  if ($('logChatOnly').checked && log.kind !== 'chat') line.style.display = 'none';
+  box.appendChild(line); while (box.childNodes.length > 1000) box.removeChild(box.firstChild);
+}
+function pollLogs() {
+  api('GET', '/api/logs?after=' + lastLogId).then(function (result) {
+    result.logs.forEach(addLogLine); if (result.logs.length) { lastLogId = result.last; scrollLog(false); }
+  }).catch(function () {});
+}
+function showIssuedKey(result) {
+  $('issuedKey').value = result.key;
+  var link = result.shortUrl || result.destinationUrl || '';
+  $('issuedLink').href = link;
+  $('issuedLink').textContent = link;
+  $('freeKeyWarning').textContent = result.warning || '';
+  $('issuedKeyResult').hidden = false;
+  clearInterval(expiryTimer);
+  if (!Number.isFinite(Date.parse(result.expiresAt))) {
+    $('keyExpiry').textContent = 'Key được mở từ link chia sẻ.';
+    return;
+  }
+  function updateExpiry() {
+    var remaining = Date.parse(result.expiresAt) - Date.now();
+    if (remaining <= 0) { $('keyExpiry').textContent = 'Key đã hết hạn.'; clearInterval(expiryTimer); return; }
+    var hours = Math.floor(remaining / 3600000);
+    var minutes = Math.floor((remaining % 3600000) / 60000);
+    var seconds = Math.floor((remaining % 60000) / 1000);
+    $('keyExpiry').textContent = 'Còn ' + hours + ' giờ ' + minutes + ' phút ' + seconds + ' giây';
+  }
+  updateExpiry(); expiryTimer = setInterval(updateExpiry, 1000);
+}
+function getFreeKey() {
+  return fetch('/api/license/free', { method: 'POST' }).then(function (res) {
+    return res.json().then(function (result) { if (!res.ok) throw new Error(result.error || 'Không tạo được key'); return result; });
+  }).then(function (result) { showIssuedKey(result); toast('Đã tạo key free'); });
+}
+function loadKeys() {
+  return api('GET', '/api/license/keys').then(function (result) {
+    var list = $('keyList'); list.textContent = '';
+    if (!result.keys.length) { var empty = document.createElement('p'); empty.className = 'hint'; empty.textContent = 'Chưa có key.'; list.appendChild(empty); return; }
+    result.keys.forEach(function (item) {
+      var row = document.createElement('div'); row.className = 'license-row';
+      var code = document.createElement('code'); code.textContent = item.key;
+      var revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'btn'; revoke.textContent = item.status === 'active' ? 'Thu hồi' : 'Đã thu hồi'; revoke.disabled = item.status !== 'active';
+      revoke.addEventListener('click', function () { api('DELETE', '/api/license/keys', { key: item.key }).then(loadKeys).catch(function (error) { toast(error.message, true); }); });
+      var detail = document.createElement('small');
+      detail.textContent = item.key_type.toUpperCase() + ' · ' + item.status + ' · hết hạn ' + new Date(item.expires_at).toLocaleString() + ' · ' + (item.bound_ip ? 'IP: ' + item.bound_ip : 'Chưa gắn IP');
+      row.appendChild(code); row.appendChild(revoke); row.appendChild(detail); list.appendChild(row);
+    });
+  });
+}
+function loadVipContact() {
+  fetch('/api/license/contact').then(function (res) { return res.json(); }).then(function (result) {
+    if (!result.url) return;
+    $('buyVip').href = result.url; $('buyVip').hidden = false; $('vipUnavailable').hidden = true;
+  }).catch(function () {});
+}
+function enter(value) {
+  token = value;
+  return api('GET', '/api/state').then(function () {
+    sessionStorage.setItem('botAdminToken', token); $('login').hidden = true; $('app').hidden = false;
+    return loadConfig().then(function () { refreshStatus(); pollLogs(); loadKeys().catch(function (error) { toast(error.message, true); }); setInterval(refreshStatus, 10000); setInterval(pollLogs, 5000); });
+  });
+}
+$('loginForm').addEventListener('submit', function (event) {
+  event.preventDefault(); enter($('token').value).catch(function (error) { toast(error.message, true); });
+});
+document.querySelectorAll('.tab').forEach(function (button) {
+  button.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (tab) { tab.classList.toggle('active', tab === button); });
+    document.querySelectorAll('.panel').forEach(function (panel) { panel.classList.toggle('active', panel.id === 'panel-' + button.dataset.tab); });
+    if (button.dataset.tab === 'log') scrollLog(true);
+    if (button.dataset.tab === 'license') loadKeys().catch(function (error) { toast(error.message, true); });
+  });
+});
+$('showPass').addEventListener('change', function () { $('password').type = this.checked ? 'text' : 'password'; });
+$('getFreeKey').addEventListener('click', function () { getFreeKey().catch(function (error) { toast(error.message, true); }); });
+$('copyIssuedKey').addEventListener('click', function () { navigator.clipboard.writeText($('issuedKey').value).then(function () { toast('Đã copy key'); }).catch(function () { $('issuedKey').select(); document.execCommand('copy'); }); });
+$('createVip').addEventListener('click', function () {
+  api('POST', '/api/license/keys', { durationHours: Number($('vipDuration').value) }).then(function (result) {
+    var box = $('vipCreated'); box.textContent = '';
+    var input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.value = result.key;
+    var copy = document.createElement('button'); copy.type = 'button'; copy.className = 'btn'; copy.textContent = 'Copy key';
+    copy.addEventListener('click', function () { navigator.clipboard.writeText(result.key).then(function () { toast('Đã copy key'); }); });
+    var expiry = document.createElement('p'); expiry.className = 'hint'; expiry.textContent = 'Hết hạn: ' + new Date(result.expiresAt).toLocaleString();
+    box.appendChild(input); box.appendChild(copy); box.appendChild(expiry); box.hidden = false;
+    return loadKeys();
+  }).catch(function (error) { toast(error.message, true); });
+});
+$('refreshKeys').addEventListener('click', function () { loadKeys().catch(function (error) { toast(error.message, true); }); });
+$('addFriend').addEventListener('click', function () { friends.push({ name: '', enabled: true }); renderFriends(); var inputs = document.querySelectorAll('#friends input[type=text]'); inputs[inputs.length - 1].focus(); });
+$('save').addEventListener('click', function () { save().then(function () { toast('Đã lưu cấu hình'); refreshStatus(); }).catch(function (error) { toast(error.message, true); }); });
+$('reconnect').addEventListener('click', function () { save().then(function () { return api('POST', '/api/reconnect'); }).then(function () { toast('Đã gửi lệnh kết nối lại'); }).catch(function (error) { toast(error.message, true); }); });
+$('logout').addEventListener('click', function () { sessionStorage.removeItem('botAdminToken'); location.reload(); });
+$('logClear').addEventListener('click', function () { $('logbox').textContent = ''; });
+$('logChatOnly').addEventListener('change', function () { document.querySelectorAll('#logbox .ln').forEach(function (line) { line.style.display = this.checked && !line.classList.contains('k-chat') ? 'none' : ''; }, this); });
+var savedToken = sessionStorage.getItem('botAdminToken');
+loadVipContact();
+if (linkLicenseKey) showIssuedKey({ key: linkLicenseKey, destinationUrl: linkLandingUrl });
+if (savedToken) enter(savedToken).catch(function () { sessionStorage.removeItem('botAdminToken'); });
+</script>
+</body>
+</html>
