@@ -6,7 +6,7 @@ module.exports = function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return sendJson(res, 405, { error: 'Phương thức không được hỗ trợ.' });
   }
-  const configured = getConfigValue('VIP_CONTACT_URL') || '';
+  const configured = process.env.VIP_CONTACT_URL || '';
   if (!configured) return sendJson(res, 200, { url: '' });
   try {
     const url = new URL(configured);
